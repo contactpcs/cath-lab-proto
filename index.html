@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Valfix TMVR - Robotic Mitral Valve Repair System</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --color-bg: #1a1f2e;
+            --color-panel: #242b3d;
+            --color-border: #3a4254;
+            --color-accent: #4a9eff;
+            --color-success: #26d07c;
+            --color-warning: #ffa500;
+            --color-alert: #ff3333;
+            --color-text-primary: #e8eef5;
+            --color-text-secondary: #a0aac0;
+            --font-mono: 'Courier New', monospace;
+            --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+
+        body {
+            background: var(--color-bg);
+            color: var(--color-text-primary);
+            font-family: var(--font-sans);
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        /* ============================================================
+           MAIN LAYOUT - Flexbox Grid for 4K Display
+           ============================================================ */
+        .container {
+            display: grid;
+            grid-template-columns: 1fr 320px;
+            grid-template-rows: 70px 1fr 110px;
+            height: 100vh;
+            gap: 12px;
+            padding: 12px;
+            background: var(--color-bg);
+        }
+
+        .header {
+            grid-column: 1 / -1;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: var(--color-panel);
+            border-bottom: 1px solid var(--color-border);
+            padding: 16px 24px;
+        }
+
+        .header h1 {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--color-text-primary);
+            letter-spacing: 0.5px;
+        }
+
+        .header-meta {
+            display: flex;
+            gap: 24px;
+            align-items: center;
+            font-size: 13px;
+        }
+
+        .header-meta-item {
+            color: var(--color-text-secondary);
+        }
+
+        .header-meta-item strong {
+            color: var(--color-text-primary);
+            margin-right: 4px;
+        }
+
+        /* ============================================================
+           MAIN VISUALIZATION AREA
+           ============================================================ */
+        .main-viz {
+            grid-column: 1;
+            grid-row: 2;
+            background: var(--color-panel);
+            border: 1px solid var(--color-border);
+            border-radius: 6px;
+            padding: 12px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: 1fr 1fr;
+            gap: 12px;
+            overflow: hidden;
+        }
+
+        .imaging-feed {
+            background: #000;
+            border: 1px solid var(--color-border);
+            border-radius: 4px;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--color-text-secondary);
+            font-size: 12px;
+        }
+
+        .imaging-feed img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .imaging-label {
+            position: absolute;
+            bottom: 8px;
+            left: 8px;
+            font-size: 11px;
+            color: var(--color-accent);
+            font-family: var(--font-mono);
+            background: rgba(0, 0, 0, 0.7);
+            padding: 4px 8px;
+            border-radius: 3px;
+            z-index: 10;
+        }
+
+        /* ============================================================
+           RIGHT SIDEBAR
+           ============================================================ */
+        .sidebar {
+            grid-column: 2;
+            grid-row: 2;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            overflow-y: auto;
+        }
+
+        .sidebar::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .sidebar::-webkit-scrollbar-thumb {
+            background: var(--color-border);
+            border-radius: 3px;
+        }
+
+        .panel {
+            background: var(--color-panel);
+            border: 1px solid var(--color-border);
+            border-radius: 4px;
+            padding: 12px;
+            flex-shrink: 0;
+        }
+
+        .panel-title {
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--color-text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--color-border);
+        }
+
+        /* System State Indicator */
+        .system-state {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px;
+            background: var(--color-bg);
+            border-radius: 4px;
+            border: 1px solid var(--color-border);
+        }
+
+        .state-indicator {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: var(--color-accent);
+            flex-shrink: 0;
+        }
+
+        .state-indicator.moving {
+            background: var(--color-warning);
+        }
+
+        .state-indicator.fault {
+            background: var(--color-alert);
+        }
+
+        .state-indicator.success {
+            background: var(--color-success);
+        }
+
+        .state-text {
+            flex: 1;
+            font-size: 12px;
+            color: var(--color-text-primary);
+        }
+
+        .state-value {
+            font-size: 11px;
+            color: var(--color-text-secondary);
+            font-family: var(--font-mono);
+        }
+
+        /* Control Items */
+        .control-row {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            margin-bottom: 8px;
+        }
+
+        .control-item {
+            padding: 8px 10px;
+            background: var(--color-bg);
+            border: 1px solid var(--color-border);
+            border-radius: 3px;
+            font-size: 11px;
+            color: var(--color-text-secondary);
+            font-family: var(--font-mono);
+        }
+
+        .control-item.active {
+            background: rgba(74, 158, 255, 0.1);
+            border-color: var(--color-accent);
+            color: var(--color-accent);
+        }
+
+        .control-item.enabled {
+            background: rgba(38, 208, 124, 0.1);
+            border-color: var(--color-success);
+            color: var(--color-success);
+        }
+
+        /* Procedure Steps */
+        .procedure-step {
+            padding: 10px;
+            background: var(--color-bg);
+            border-left: 2px solid var(--color-border);
+            border-radius: 2px;
+            margin-bottom: 6px;
+            font-size: 11px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .procedure-step:hover {
+            background: rgba(74, 158, 255, 0.05);
+        }
+
+        .procedure-step.active {
+            background: rgba(74, 158, 255, 0.15);
+            border-left-color: var(--color-accent);
+            color: var(--color-accent);
+        }
+
+        .procedure-step.completed {
+            border-left-color: var(--color-success);
+            opacity: 0.6;
+        }
+
+        .step-title {
+            font-weight: 600;
+            margin-bottom: 2px;
+            color: var(--color-text-primary);
+        }
+
+        .step-detail {
+            font-size: 10px;
+            color: var(--color-text-secondary);
+            margin-top: 2px;
+        }
+
+        /* ============================================================
+           BOTTOM TELEMETRY & MONITORING PANEL
+           ============================================================ */
+        .telemetry {
+            grid-column: 1 / -1;
+            grid-row: 3;
+            background: var(--color-panel);
+            border-top: 1px solid var(--color-border);
+            padding: 12px 20px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 12px;
+            overflow-x: auto;
+        }
+
+        .metric {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-width: 100px;
+            padding: 8px;
+            background: var(--color-bg);
+            border: 1px solid var(--color-border);
+            border-radius: 3px;
+        }
+
+        .metric-value {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--color-accent);
+            font-family: var(--font-mono);
+            letter-spacing: 0.5px;
+            margin-bottom: 3px;
+        }
+
+        .metric-label {
+            font-size: 9px;
+            color: var(--color-text-secondary);
+            text-align: center;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
+        .metric.warning .metric-value {
+            color: var(--color-warning);
+        }
+
+        .metric.critical .metric-value {
+            color: var(--color-alert);
+        }
+
+        .metric.success .metric-value {
+            color: var(--color-success);
+        }
+
+        /* Scrollbar Styling */
+        ::-webkit-scrollbar {
+            height: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--color-bg);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--color-border);
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--color-accent);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- HEADER -->
+        <div class="header">
+            <h1>→ Valfix TMVR | Robotic Mitral Valve Repair</h1>
+            <div class="header-meta">
+                <div class="header-meta-item"><strong>Case:</strong> 002707092</div>
+                <div class="header-meta-item"><strong>Status:</strong> <span style="color: var(--color-success);">ACTIVE</span></div>
+                <div class="header-meta-item"><strong>Mode:</strong> Telemanipulation</div>
+            </div>
+        </div>
+
+        <!-- MAIN VISUALIZATION AREA -->
+        <div class="main-viz">
+            <!-- 3D TEE Feed -->
+            <div class="imaging-feed">
+                <img src="Screenshot_20260308_131359_YouTube.jpg" alt="3D TEE" style="width: 100%; height: 100%; object-fit: contain;">
+                <div class="imaging-label">3D TEE | 75 FPS</div>
+            </div>
+
+            <!-- Color Doppler Feed -->
+            <div class="imaging-feed">
+                <img src="Screenshot_20260308_131031_YouTube.jpg" alt="Color Doppler" style="width: 100%; height: 100%; object-fit: contain;">
+                <div class="imaging-label">Color Doppler | 60 FPS</div>
+            </div>
+
+            <!-- Catheter Tracking (Fluoroscopy) -->
+            <div class="imaging-feed">
+                <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='300'%3E%3Crect fill='%23000' width='400' height='300'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dy='.3em' fill='%234a9eff' font-size='14' font-family='monospace'%3EFluoroscopy / X-Ray%3C/text%3E%3C/svg%3E" alt="Fluoroscopy">
+                <div class="imaging-label">Fluoroscopy | 30 FPS</div>
+            </div>
+
+            <!-- 3D Fused Model -->
+            <div class="imaging-feed">
+                <img src="Screenshot_20260308_155105_YouTube.jpg" alt="3D Model" style="width: 100%; height: 100%; object-fit: contain;">
+                <div class="imaging-label">3D Fused Model | 45 FPS</div>
+            </div>
+        </div>
+
+        <!-- RIGHT SIDEBAR -->
+        <div class="sidebar">
+            <!-- System State -->
+            <div class="panel">
+                <div class="system-state">
+                    <div class="state-indicator success" id="state-indicator"></div>
+                    <div>
+                        <div class="state-text" style="font-size: 13px;">System Ready</div>
+                        <div class="state-value" id="system-state-text">ARMED</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Hardware Controls -->
+            <div class="panel">
+                <div class="panel-title">Hardware Controls</div>
+                <div class="control-row">
+                    <div class="control-item" id="joystick-mode">Joystick: Idle</div>
+                    <div class="control-item" id="pedal-status">Pedal: Disengaged</div>
+                </div>
+                <div class="control-item" id="axes-active">54 Axes: Ready</div>
+            </div>
+
+            <!-- Procedure Progress -->
+            <div class="panel">
+                <div class="panel-title">Procedure Progress</div>
+                <div class="procedure-step active" data-step="1">
+                    <div class="step-title">Step 1: GCS Placement</div>
+                    <div class="step-detail">Guide catheter navigation</div>
+                </div>
+                <div class="procedure-step" data-step="2">
+                    <div class="step-title">Step 2: ADS Deploy</div>
+                    <div class="step-detail">8 anchor placement</div>
+                </div>
+                <div class="procedure-step" data-step="3">
+                    <div class="step-title">Step 3: RDS Position</div>
+                    <div class="step-detail">Ring delivery system</div>
+                </div>
+                <div class="procedure-step" data-step="4">
+                    <div class="step-title">Step 4: Suture Tension</div>
+                    <div class="step-detail">Final lock & cut</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TELEMETRY PANEL -->
+        <div class="telemetry">
+            <div class="metric">
+                <div class="metric-value" id="latency-e2e">35.8 ms</div>
+                <div class="metric-label">E2E Latency</div>
+            </div>
+            <div class="metric">
+                <div class="metric-value" id="latency-sync">14.2 ms</div>
+                <div class="metric-label">Sync Lag</div>
+            </div>
+            <div class="metric">
+                <div class="metric-value" id="latency-3d">17.6 ms</div>
+                <div class="metric-label">3D Recon</div>
+            </div>
+            <div class="metric">
+                <div class="metric-value" id="latency-ai">10.3 ms</div>
+                <div class="metric-label">AI Inference</div>
+            </div>
+            <div class="metric">
+                <div class="metric-value" id="fps-echo">75 fps</div>
+                <div class="metric-label">Echo FPS</div>
+            </div>
+            <div class="metric">
+                <div class="metric-value" id="fps-fluoro">30 fps</div>
+                <div class="metric-label">Fluoro FPS</div>
+            </div>
+            <div class="metric">
+                <div class="metric-value" id="jitter-value">2.1 ms</div>
+                <div class="metric-label">Jitter</div>
+            </div>
+            <div class="metric">
+                <div class="metric-value" id="packet-loss">0.0 %</div>
+                <div class="metric-label">Packet Loss</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ============================================================
+        // PROFESSIONAL TELEMETRY SYSTEM
+        // ============================================================
+        class ValfixMonitor {
+            constructor() {
+                this.systemState = 'armed';
+                this.joystickMode = 'idle';
+                this.pedalEngaged = false;
+                this.currentStep = 1;
+                this.initializeMetrics();
+                this.start();
+            }
+
+            initializeMetrics() {
+                this.metrics = {
+                    e2e_latency: 35,
+                    echo_fluoro_sync: 14,
+                    reconstruction_3d: 17,
+                    ai_inference: 10,
+                    echo_fps: 75,
+                    fluoro_fps: 30,
+                    jitter: 2.1,
+                    packet_loss: 0.0
+                };
+            }
+
+            start() {
+                // Update telemetry every 150ms
+                setInterval(() => this.updateTelemetry(), 150);
+                
+                // Update system state every 12s
+                setInterval(() => this.randomizeSystemState(), 12000);
+                
+                // Advance procedure every 20s
+                setInterval(() => this.advanceProcedure(), 20000);
+            }
+
+            updateTelemetry() {
+                const time = Date.now() / 1000;
+                
+                // E2E: 30-40ms
+                this.metrics.e2e_latency = 35 + 4 * Math.sin(time * 0.3) + (Math.random() - 0.5) * 1;
+                
+                // Sync: 12-18ms
+                this.metrics.echo_fluoro_sync = 14 + 2.5 * Math.sin(time * 0.4) + (Math.random() - 0.5) * 0.8;
+                
+                // 3D: 15-20ms
+                this.metrics.reconstruction_3d = 17 + 2 * Math.sin(time * 0.35) + (Math.random() - 0.5) * 0.8;
+                
+                // AI: 8-12ms
+                this.metrics.ai_inference = 10 + 1.5 * Math.sin(time * 0.45) + (Math.random() - 0.5) * 0.6;
+                
+                // FPS
+                this.metrics.echo_fps = 75 + (Math.random() - 0.5) * 0.8;
+                this.metrics.fluoro_fps = 30 + (Math.random() - 0.5) * 0.5;
+                
+                // Jitter
+                this.metrics.jitter = 2.1 + (Math.random() - 0.5) * 0.5;
+                
+                // Packet loss (essentially zero)
+                this.metrics.packet_loss = (Math.random() - 0.5) * 0.01;
+
+                this.renderTelemetry();
+            }
+
+            randomizeSystemState() {
+                const states = ['armed', 'moving', 'idle'];
+                this.systemState = states[Math.floor(Math.random() * states.length)];
+                this.joystickMode = this.systemState === 'moving' ? 'advance' : 'idle';
+                this.render();
+            }
+
+            advanceProcedure() {
+                if (this.currentStep < 4) {
+                    this.currentStep++;
+                    this.render();
+                }
+            }
+
+            renderTelemetry() {
+                document.getElementById('latency-e2e').textContent = 
+                    Math.max(30, this.metrics.e2e_latency).toFixed(1) + ' ms';
+                document.getElementById('latency-sync').textContent = 
+                    Math.max(12, this.metrics.echo_fluoro_sync).toFixed(1) + ' ms';
+                document.getElementById('latency-3d').textContent = 
+                    Math.max(15, this.metrics.reconstruction_3d).toFixed(1) + ' ms';
+                document.getElementById('latency-ai').textContent = 
+                    Math.max(8, this.metrics.ai_inference).toFixed(1) + ' ms';
+                document.getElementById('fps-echo').textContent = 
+                    this.metrics.echo_fps.toFixed(0) + ' fps';
+                document.getElementById('fps-fluoro').textContent = 
+                    this.metrics.fluoro_fps.toFixed(0) + ' fps';
+                document.getElementById('jitter-value').textContent = 
+                    Math.abs(this.metrics.jitter).toFixed(1) + ' ms';
+                document.getElementById('packet-loss').textContent = 
+                    Math.max(0, this.metrics.packet_loss).toFixed(1) + ' %';
+            }
+
+            render() {
+                const indicator = document.getElementById('state-indicator');
+                const stateText = document.getElementById('system-state-text');
+                
+                indicator.className = 'state-indicator ' + this.systemState;
+                stateText.textContent = this.systemState.toUpperCase();
+
+                const joystickEl = document.getElementById('joystick-mode');
+                joystickEl.textContent = 'Joystick: ' + this.joystickMode.toUpperCase();
+                joystickEl.classList.toggle('active', this.joystickMode !== 'idle');
+
+                document.querySelectorAll('.procedure-step').forEach((step, idx) => {
+                    step.classList.remove('active', 'completed');
+                    if (idx + 1 === this.currentStep) {
+                        step.classList.add('active');
+                    } else if (idx + 1 < this.currentStep) {
+                        step.classList.add('completed');
+                    }
+                });
+            }
+        }
+
+        const monitor = new ValfixMonitor();
+        monitor.render();
+        monitor.renderTelemetry();
+
+        // Procedure step navigation
+        document.querySelectorAll('.procedure-step').forEach(step => {
+            step.addEventListener('click', () => {
+                monitor.currentStep = parseInt(step.dataset.step);
+                monitor.render();
+            });
+        });
+
+        console.log('✓ Valfix TMVR Monitor Active');
+        console.log('✓ Real-time telemetry enabled');
+        console.log('✓ Target latency: <50ms');
+    </script>
+</body>
+</html>
